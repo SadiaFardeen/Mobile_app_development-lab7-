@@ -1,43 +1,103 @@
-// context/students-context.tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { Dispatch, ReactNode } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useReducer,
+    useState,
+} from "react";
 
-import React from "react";
-import { createContext, useContext, useReducer } from "react";
 import { STUDENTS } from "../data/students";
-import { StudentsAction, StudentsState, studentsReducer } from "./students-reducer";
+import {
+    StudentsAction,
+    StudentsState,
+    studentsReducer,
+} from "./students-reducer";
 
-// ── Context shape ────────────────────────────────────────
-// Any component that consumes this context receives both
-// the current list AND the dispatch function to update it.
 interface StudentsContextValue {
-    students: StudentsState;
-    dispatch: React.Dispatch<StudentsAction>;
+  students: StudentsState;
+  dispatch: Dispatch<StudentsAction>;
+  isLoading: boolean;
 }
 
-// createContext requires a default value.
-// We use null and guard against it in the custom hook below.
-const StudentsContext = createContext<StudentsContextValue | null>(null);
+const StudentsContext =
+  createContext<StudentsContextValue | null>(null);
 
-// ── Provider component ───────────────────────────────────
-// Wraps the app and supplies state to all children.
-interface StudentsProviderProps {
-    children: React.ReactNode;
+const STORAGE_KEY = "@student_directory";
+
+export function StudentsProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [students, dispatch] = useReducer(
+    studentsReducer,
+    STUDENTS
+  );
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  // LOAD: read saved students when the app starts
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (raw) {
+          const saved = JSON.parse(raw) as StudentsState;
+
+          dispatch({
+            type: "LOAD",
+            payload: saved,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error(
+          "AsyncStorage load error:",
+          err
+        )
+      )
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  // SAVE: save students whenever the list changes
+  useEffect(() => {
+    if (isLoading) return;
+
+    AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(students)
+    ).catch((err) =>
+      console.error(
+        "AsyncStorage save error:",
+        err
+      )
+    );
+  }, [students]);
+
+  return (
+    <StudentsContext.Provider
+      value={{
+        students,
+        dispatch,
+        isLoading,
+      }}
+    >
+      {children}
+    </StudentsContext.Provider>
+  );
 }
 
-export function StudentsProvider({ children }: StudentsProviderProps) {
-    // useReducer wires the reducer function to the initial state.
-    // dispatch is a stable function — safe to pass without useCallback.
-    const [students, dispatch] = useReducer(studentsReducer, STUDENTS);
-
-    return <StudentsContext.Provider value={{ students, dispatch }}>{children}</StudentsContext.Provider>;
-}
-
-// ── Custom hook ──────────────────────────────────────────
-// Wraps useContext with a guard: throws a helpful error if
-// a component tries to use this hook outside the Provider.
 export function useStudents(): StudentsContextValue {
-    const ctx = useContext(StudentsContext);
-    if (!ctx) {
-        throw new Error("useStudents must be used inside a StudentsProvider");
-    }
-    return ctx;
+  const ctx = useContext(StudentsContext);
+
+  if (!ctx) {
+    throw new Error(
+      "useStudents must be inside StudentsProvider"
+    );
+  }
+
+  return ctx;
 }
