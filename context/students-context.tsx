@@ -38,7 +38,6 @@ export function StudentsProvider({
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // LOAD: read saved students when the app starts
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
@@ -62,7 +61,7 @@ export function StudentsProvider({
       });
   }, []);
 
-  // SAVE: save students whenever the list changes
+  
   useEffect(() => {
     if (isLoading) return;
 
