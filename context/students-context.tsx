@@ -1,5 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Dispatch, ReactNode } from "react";
+import type {
+    Dispatch,
+    ReactNode,
+} from "react";
 import {
     createContext,
     useContext,
@@ -9,11 +12,12 @@ import {
 } from "react";
 
 import { STUDENTS } from "../data/students";
-import {
+
+import type {
     StudentsAction,
     StudentsState,
-    studentsReducer,
 } from "./students-reducer";
+import { studentsReducer } from "./students-reducer";
 
 interface StudentsContextValue {
   students: StudentsState;
@@ -61,7 +65,7 @@ export function StudentsProvider({
       });
   }, []);
 
-  
+  // Save students whenever the list changes
   useEffect(() => {
     if (isLoading) return;
 
